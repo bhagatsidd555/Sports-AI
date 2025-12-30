@@ -1,24 +1,38 @@
 import pandas as pd
-from src.logging import logger
+import numpy as np
 
-def clean_garmin_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Cleans raw Garmin wearable data.
-    - Drops rows with missing timestamps or distance
-    - Fills missing heart rate and speed
-    - Converts columns to correct numeric types
-    """
-    # Drop rows with missing critical values
-    df = df.dropna(subset=["timestamp", "distance"])
-    
-    # Fill missing heart rate and speed
-    df["heart_rate"] = df["heart_rate"].fillna(method="ffill")
-    df["speed"] = df["speed"].fillna(method="ffill")
-    
-    # Ensure numeric types
-    df["distance"] = pd.to_numeric(df["distance"])
-    df["speed"] = pd.to_numeric(df["speed"])
-    df["heart_rate"] = pd.to_numeric(df["heart_rate"])
-    
-    logger.info(f"Data cleaned: {df.shape[0]} rows remaining")
-    return df
+
+def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    # 🔑 FORCE numeric conversion for safety
+    numeric_cols = [
+        "distance", "speed", "heart_rate",
+        "cadence", "elevation", "temperature",
+        "latitude", "longitude"
+    ]
+
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Timestamp
+    if "timestamp" in df.columns:
+        df = df.dropna(subset=["timestamp"])
+        df = df.drop_duplicates(subset=["timestamp"])
+
+    # Distance
+    if "distance" in df.columns:
+        df["distance"] = df["distance"].fillna(method="ffill").fillna(0)
+
+    # Speed
+    if "speed" in df.columns:
+        df.loc[(df["speed"] < 0) | (df["speed"] > 15), "speed"] = np.nan
+        df["speed"] = df["speed"].interpolate()
+
+    # Heart rate
+    if "heart_rate" in df.columns:
+        df.loc[(df["heart_rate"] < 30) | (df["heart_rate"] > 230), "heart_rate"] = np.nan
+        df["heart_rate"] = df["heart_rate"].interpolate()
+
+    return df.reset_index(drop=True)

@@ -1,131 +1,110 @@
-"""
-Race Readiness Scoring Engine
-Combines all KPIs into a single composite score (0–100)
-"""
-
-from scoring.weights import KPI_WEIGHTS
-from scoring.thresholds import KPI_THRESHOLDS
+from typing import Dict
+from .thresholds import THRESHOLDS
+from .weights import WEIGHTS
 
 
-def normalize_lower_better(value, excellent, poor):
+def _score_linear(value, excellent, poor, inverse=False):
     """
-    Lower value = better performance
+    Linear scoring helper.
+    Returns value between 0 and 1.
     """
-    if value <= excellent:
-        return 1.0
-    if value >= poor:
-        return 0.0
-    return 1 - (value - excellent) / (poor - excellent)
+    if value is None:
+        return 0.5  # neutral
+
+    if inverse:
+        if value <= excellent:
+            return 1.0
+        if value >= poor:
+            return 0.0
+        return 1 - (value - excellent) / (poor - excellent)
+    else:
+        if value >= excellent:
+            return 1.0
+        if value <= poor:
+            return 0.0
+        return (value - poor) / (excellent - poor)
 
 
-def normalize_higher_better(value, poor, excellent):
+def compute_readiness_score(metrics: Dict) -> Dict:
     """
-    Higher value = better performance
-    """
-    if value >= excellent:
-        return 1.0
-    if value <= poor:
-        return 0.0
-    return (value - poor) / (excellent - poor)
-
-
-def normalize_acwr(acwr):
-    """
-    Optimal workload zone: 0.8 – 1.3
-    """
-    if 0.8 <= acwr <= 1.3:
-        return 1.0
-    if acwr < 0.8:
-        return acwr / 0.8
-    return max(0.0, 1 - (acwr - 1.3))
-
-
-def compute_race_readiness_score(kpis: dict) -> dict:
-    """
-    Input:
-        kpis: dict of computed KPIs
-
-    Output:
-        readiness score + breakdown
+    Compute overall Race Readiness Score (0–100)
+    Returns score + component breakdown
     """
 
-    scores = {}
+    components = {}
 
-    # Lap consistency
-    scores["lap_consistency"] = normalize_lower_better(
-        kpis["lap_consistency"],
-        KPI_THRESHOLDS["lap_consistency"]["excellent"],
-        KPI_THRESHOLDS["lap_consistency"]["poor"]
+    # ---------------------------
+    # Speed Decay (lower is better)
+    # ---------------------------
+    sd = metrics.get("speed_decay")
+    components["speed_decay"] = _score_linear(
+        sd,
+        THRESHOLDS["speed_decay"]["excellent"],
+        THRESHOLDS["speed_decay"]["poor"],
+        inverse=True
     )
 
-    # Speed decay
-    scores["speed_decay"] = normalize_lower_better(
-        kpis["speed_decay"],
-        KPI_THRESHOLDS["speed_decay"]["excellent"],
-        KPI_THRESHOLDS["speed_decay"]["poor"]
+    # ---------------------------
+    # HR Drift (lower is better)
+    # ---------------------------
+    hr_drift = metrics.get("hr_drift")
+    components["hr_drift"] = _score_linear(
+        hr_drift,
+        THRESHOLDS["hr_drift"]["excellent"],
+        THRESHOLDS["hr_drift"]["poor"],
+        inverse=True
     )
 
-    # HR drift
-    scores["heart_rate_drift"] = normalize_lower_better(
-        kpis["heart_rate_drift"],
-        KPI_THRESHOLDS["heart_rate_drift"]["excellent"],
-        KPI_THRESHOLDS["heart_rate_drift"]["poor"]
+    # ---------------------------
+    # Speed–HR Efficiency (higher is better)
+    # ---------------------------
+    eff = metrics.get("efficiency")
+    components["efficiency"] = _score_linear(
+        eff,
+        THRESHOLDS["efficiency"]["excellent"],
+        THRESHOLDS["efficiency"]["poor"]
     )
 
-    # Speed-HR efficiency
-    scores["speed_hr_efficiency"] = normalize_higher_better(
-        kpis["speed_hr_efficiency"],
-        KPI_THRESHOLDS["speed_hr_efficiency"]["poor"],
-        KPI_THRESHOLDS["speed_hr_efficiency"]["excellent"]
+    # ---------------------------
+    # ACWR (penalty outside safe zone)
+    # ---------------------------
+    acwr = metrics.get("acwr")
+    if acwr is None:
+        components["acwr"] = 0.5
+    elif THRESHOLDS["acwr"]["low_risk_min"] <= acwr <= THRESHOLDS["acwr"]["low_risk_max"]:
+        components["acwr"] = 1.0
+    else:
+        components["acwr"] = 0.3
+
+    # ---------------------------
+    # Endurance Index
+    # ---------------------------
+    ei = metrics.get("endurance_index")
+    components["endurance_index"] = _score_linear(
+        ei,
+        THRESHOLDS["endurance_index"]["excellent"],
+        THRESHOLDS["endurance_index"]["poor"]
     )
 
-    # Endurance
-    scores["endurance_index"] = normalize_higher_better(
-        kpis["endurance_index"],
-        KPI_THRESHOLDS["endurance_index"]["poor"],
-        KPI_THRESHOLDS["endurance_index"]["excellent"]
-    )
+    # ---------------------------
+    # Lap Consistency (lower CV is better)
+    # ---------------------------
+    lap_cv = metrics.get("lap_consistency")
+    if lap_cv is None:
+        components["lap_consistency"] = 0.5
+    else:
+        components["lap_consistency"] = max(0.0, 1 - lap_cv)
 
-    # ACWR
-    scores["acwr"] = normalize_acwr(kpis["acwr"])
+    # ---------------------------
+    # Weighted aggregation
+    # ---------------------------
+    readiness_score = 0.0
+    for key, weight in WEIGHTS.items():
+        readiness_score += components.get(key, 0) * weight
 
-    # Trajectory smoothness
-    scores["trajectory_smoothness"] = normalize_lower_better(
-        kpis["trajectory_smoothness"],
-        KPI_THRESHOLDS["trajectory_smoothness"]["excellent"],
-        KPI_THRESHOLDS["trajectory_smoothness"]["poor"]
-    )
-
-    # Corner speed loss
-    scores["corner_speed_loss"] = normalize_lower_better(
-        kpis["corner_speed_loss"],
-        KPI_THRESHOLDS["corner_speed_loss"]["excellent"],
-        KPI_THRESHOLDS["corner_speed_loss"]["poor"]
-    )
-
-    # ---- FINAL COMPOSITE SCORE ----
-    final_score = 0.0
-    for kpi, weight in KPI_WEIGHTS.items():
-        final_score += scores[kpi] * weight
-
-    final_score = round(final_score * 100, 2)
+    readiness_score = round(readiness_score * 100, 1)
 
     return {
-        "race_readiness_score": final_score,
-        "normalized_scores": scores,
-        "interpretation": interpret_score(final_score)
+        "readiness_score": readiness_score,
+        "components": components
     }
-
-
-def interpret_score(score: float) -> str:
-    """
-    Coach-friendly explanation
-    """
-    if score >= 85:
-        return "Peak race-ready condition"
-    elif score >= 70:
-        return "Good condition – minor tuning needed"
-    elif score >= 55:
-        return "Moderate readiness – monitor fatigue"
-    else:
-        return "Low readiness – recovery recommended"

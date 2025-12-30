@@ -1,6 +1,5 @@
-# Expose KPI modules for easy import
-from .aggregator import compute_race_readiness
-from .endurance_kpi import endurance_index
-from .hr_kpi import hr_drift, speed_hr_efficiency
-from .load_kpi import compute_acwr, training_load_trend
-from .speed_kpi import lap_consistency, speed_decay, corner_speed_loss
+from .speed_kpi import compute_speed_kpis
+from .hr_kpi import compute_hr_kpis
+from .load_kpi import compute_load_kpis
+from .endurance_kpi import compute_endurance_kpis
+from .aggregator import aggregate_kpis

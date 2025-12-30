@@ -1,22 +1,13 @@
 """
-Weights for composite race readiness score
-Sum of all weights MUST be 1.0
+Weights for readiness score computation
+These represent relative importance for race readiness
 """
 
-KPI_WEIGHTS = {
-    # Consistency & pacing
-    "lap_consistency": 0.15,
-    "speed_decay": 0.15,
-
-    # Physiological control
-    "heart_rate_drift": 0.15,
-    "speed_hr_efficiency": 0.15,
-
-    # Fatigue & workload
+WEIGHTS = {
+    "speed_decay": 0.20,
+    "hr_drift": 0.20,
+    "efficiency": 0.20,
     "acwr": 0.15,
-    "endurance_index": 0.10,
-
-    # Technical efficiency
-    "trajectory_smoothness": 0.10,
-    "corner_speed_loss": 0.05
+    "endurance_index": 0.15,
+    "lap_consistency": 0.10
 }

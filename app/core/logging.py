@@ -1,29 +1,44 @@
 import logging
-import sys
-from app.core.config import settings
+from logging.handlers import RotatingFileHandler
+import os
 
 
-def get_logger(name: str) -> logging.Logger:
+LOG_DIR = "logs"
+LOG_FILE = "sports_ai.log"
+
+os.makedirs(LOG_DIR, exist_ok=True)
+
+
+def get_logger(name: str = "sports-ai") -> logging.Logger:
     """
-    Returns a configured logger instance
+    Create and return a configured logger
     """
+
     logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
 
-    # Avoid duplicate handlers
     if logger.handlers:
-        return logger
+        return logger  # Avoid duplicate handlers
 
-    logger.setLevel(settings.LOG_LEVEL)
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_formatter = logging.Formatter(
+        "[%(asctime)s] [%(levelname)s] %(name)s - %(message)s"
+    )
+    console_handler.setFormatter(console_formatter)
 
-    formatter = logging.Formatter(settings.LOG_FORMAT)
-
-    # Console Handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
+    # File handler (rotating)
+    file_handler = RotatingFileHandler(
+        filename=os.path.join(LOG_DIR, LOG_FILE),
+        maxBytes=5 * 1024 * 1024,  # 5 MB
+        backupCount=5
+    )
+    file_formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    )
+    file_handler.setFormatter(file_formatter)
 
     logger.addHandler(console_handler)
-
-    # Prevent propagation to root logger
-    logger.propagate = False
+    logger.addHandler(file_handler)
 
     return logger

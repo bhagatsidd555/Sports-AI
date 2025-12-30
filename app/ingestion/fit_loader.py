@@ -1,25 +1,42 @@
 from fitparse import FitFile
 import pandas as pd
+import io
+from fastapi import UploadFile
 from .schema import GarminSchema
 
 
-def load_fit(file_path: str) -> pd.DataFrame:
+async def load_fit(file: UploadFile) -> pd.DataFrame:
     """
-    Load Garmin FIT file and return a pandas DataFrame
+    Load Garmin FIT file from FastAPI UploadFile
+    Returns validated Pandas DataFrame
     """
 
-    fitfile = FitFile(file_path)
-    records = []
+    try:
+        contents: bytes = await file.read()
+        fit_buffer = io.BytesIO(contents)
 
-    for record in fitfile.get_messages("record"):
-        row = {}
-        for field in record:
-            row[field.name] = field.value
-        records.append(row)
+        fitfile = FitFile(fit_buffer)
 
-    df = pd.DataFrame(records)
+        records = []
 
-    # Optional: schema validation hook
-    # GarminSchema.validate(df)
+        for record in fitfile.get_messages("record"):
+            row = {}
+            for field in record:
+                row[field.name] = field.value
+            records.append(row)
 
-    return df
+        if not records:
+            raise ValueError("No activity records found in FIT file")
+
+        df = pd.DataFrame(records)
+
+        # Standardize column names
+        df.columns = [c.strip().lower() for c in df.columns]
+
+        # Optional schema validation
+        GarminSchema.validate(df)
+
+        return df
+
+    except Exception as e:
+        raise RuntimeError(f"FIT loading failed: {str(e)}")

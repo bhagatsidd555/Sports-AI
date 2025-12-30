@@ -1,29 +1,38 @@
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import List, Dict, Optional
 
-# Individual KPI model
-class KPIs(BaseModel):
-    lap_consistency: float
-    speed_decay: float
-    speed_hr_efficiency: float
-    training_load: float
-    hr_drift: float
-    endurance_index: float
-    trajectory_smoothness: Optional[float] = None
-    corner_speed_loss: Optional[float] = None
 
-# Race readiness model
-class RaceReadinessResponse(BaseModel):
-    athlete_id: str
-    session_date: str
-    kpis: KPIs
-    race_readiness_score: float
+class UploadResponse(BaseModel):
+    """
+    Response model for file upload endpoint
+    """
+    status: str
+    filename: str
+    rows: int
+    columns: List[str]
+    message: str
 
-# Full analytics response including optional visualizations
-class AnalyticsResponse(BaseModel):
-    athlete_id: str
-    session_date: str
-    kpis: KPIs
-    race_readiness_score: float
-    trends: Optional[Dict[str, float]] = None  # e.g., training load trend, speed decay trend
-    feedback: Optional[str] = None  # Coach-friendly summary or automated insights
+
+class KPIResponse(BaseModel):
+    """
+    Response model for KPI computation
+    """
+    status: str
+    metrics: Dict[str, Optional[float]]
+
+
+class ChatResponse(BaseModel):
+    """
+    Response model for chat / AI insight endpoint
+    """
+    status: str
+    answer: str
+
+
+class HealthResponse(BaseModel):
+    """
+    Response model for health check endpoint
+    """
+    status: str
+    service: str
+    message: str

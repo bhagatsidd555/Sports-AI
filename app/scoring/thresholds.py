@@ -1,58 +1,40 @@
 """
-Thresholds define expected physiological & performance ranges
-Used for normalization and flagging risk
+Threshold values for performance & fatigue metrics
+All values are Lean V1 safe defaults (can be tuned per athlete later)
 """
 
-KPI_THRESHOLDS = {
-
-    # Lower is better
-    "lap_consistency": {
-        "excellent": 0.03,
-        "good": 0.06,
-        "poor": 0.10
-    },
-
+THRESHOLDS = {
+    # Speed decay (fraction)
     "speed_decay": {
-        "excellent": 0.03,
-        "good": 0.06,
-        "poor": 0.10
-    },
-
-    "heart_rate_drift": {
         "excellent": 0.05,
-        "good": 0.10,
-        "poor": 0.15
+        "acceptable": 0.10,
+        "poor": 0.20
     },
 
-    # Higher is better
-    "speed_hr_efficiency": {
-        "poor": 0.20,
-        "good": 0.30,
-        "excellent": 0.40
+    # Heart rate drift (%)
+    "hr_drift": {
+        "excellent": 5,
+        "acceptable": 10,
+        "poor": 20
     },
 
-    "endurance_index": {
-        "poor": 0.25,
-        "good": 0.35,
-        "excellent": 0.45
+    # Speed–HR efficiency (higher is better)
+    "efficiency": {
+        "excellent": 0.035,
+        "acceptable": 0.025,
+        "poor": 0.015
     },
 
-    # Workload balance
+    # ACWR (load balance)
     "acwr": {
         "low_risk_min": 0.8,
         "low_risk_max": 1.3
     },
 
-    # Technical
-    "trajectory_smoothness": {
-        "excellent": 0.02,
-        "good": 0.05,
-        "poor": 0.08
-    },
-
-    "corner_speed_loss": {
-        "excellent": 0.02,
-        "good": 0.05,
-        "poor": 0.08
+    # Endurance index
+    "endurance_index": {
+        "excellent": 0.035,
+        "acceptable": 0.025,
+        "poor": 0.015
     }
 }

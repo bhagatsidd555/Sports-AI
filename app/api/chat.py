@@ -1,39 +1,36 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from app.ai_layer.generator import generate_ai_response
-from app.kpi_engine.aggregator import calculate_all_kpis
+from typing import Dict
 
-router = APIRouter()
+from app.ai_layer.generator import generate_insight
+
+router = APIRouter(prefix="/chat", tags=["Chat"])
+
 
 class ChatRequest(BaseModel):
-    question: str
-    athlete_id: str | None = None
-    kpi_data: dict | None = None
+    metrics: Dict
+    question: str | None = None
 
-class ChatResponse(BaseModel):
-    answer: str
-    confidence: float
 
-@router.post("/", response_model=ChatResponse)
-def chat_with_ai(request: ChatRequest):
+@router.post("/")
+def chat_with_performance(data: ChatRequest):
     """
-    Ask performance-related questions to AI
+    Chat endpoint to interpret performance metrics
     """
+
     try:
-        kpis = {}
+        if not data.metrics:
+            raise HTTPException(status_code=400, detail="Metrics data is required")
 
-        if request.kpi_data:
-            kpis = calculate_all_kpis(request.kpi_data)
+        insight = generate_insight(data.metrics)
 
-        ai_answer = generate_ai_response(
-            question=request.question,
-            kpis=kpis
-        )
-
-        return ChatResponse(
-            answer=ai_answer,
-            confidence=0.92
-        )
+        return {
+            "status": "success",
+            "answer": insight
+        }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat processing failed: {str(e)}"
+        )

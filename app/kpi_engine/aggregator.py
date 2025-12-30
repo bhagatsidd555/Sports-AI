@@ -1,25 +1,22 @@
-from .speed_kpi import lap_consistency, speed_decay, corner_speed_loss
-from .hr_kpi import hr_drift, speed_hr_efficiency
-from .endurance_kpi import endurance_index
-from .load_kpi import compute_acwr, training_load_trend
-from utils.logging_util import logger
+from typing import Dict
+import pandas as pd
 
-def compute_race_readiness(df):
+from .speed_kpi import compute_speed_kpis
+from .hr_kpi import compute_hr_kpis
+from .load_kpi import compute_load_kpis
+from .endurance_kpi import compute_endurance_kpis
+
+
+def aggregate_kpis(df: pd.DataFrame) -> Dict:
     """
-    Aggregate all KPIs into a single Race Readiness Score (0-100)
+    Aggregate all KPI groups into one metrics dictionary
     """
-    scores = {}
 
-    scores['lap_consistency'] = max(0, 100 - lap_consistency(df))  # lower std = higher score
-    scores['speed_decay'] = max(0, 100 - speed_decay(df))          # lower decay = higher score
-    scores['hr_drift'] = max(0, 100 - hr_drift(df))                # lower drift = higher score
-    scores['speed_hr_efficiency'] = speed_hr_efficiency(df) * 100  # normalized
-    scores['endurance_index'] = endurance_index(df) * 10           # normalized
-    scores['acwr'] = max(0, 100 - abs(1 - compute_acwr(df)) * 100) # ideal ACWR ~1
-    scores['training_load_trend'] = max(0, 100 - abs(training_load_trend(df))*100)
-    scores['corner_speed_loss'] = max(0, 100 - corner_speed_loss(df))
+    metrics = {}
 
-    race_readiness_score = sum(scores.values()) / len(scores)
-    logger.info(f"Overall Race Readiness Score: {race_readiness_score:.2f}/100")
+    metrics.update(compute_speed_kpis(df))
+    metrics.update(compute_hr_kpis(df))
+    metrics.update(compute_load_kpis(df))
+    metrics.update(compute_endurance_kpis(df))
 
-    return race_readiness_score, scores
+    return metrics

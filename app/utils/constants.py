@@ -1,22 +1,37 @@
 """
-Global constants used across the analytics platform
+Global constants for Sports-AI platform
+All values are chosen for elite endurance & speed-skating athletes
 """
 
-# Distance & time
-METERS_IN_KM = 1000
-SECONDS_IN_MIN = 60
-
+# -----------------------------
 # Physiological limits
+# -----------------------------
 MIN_HEART_RATE = 30
-MAX_HEART_RATE = 220
+MAX_HEART_RATE = 230
 
-# Speed limits (m/s)
-MIN_SPEED = 0.0
-MAX_SPEED = 20.0
+MIN_SPEED = 0.0          # m/s
+MAX_SPEED = 15.0         # m/s (elite skating upper bound)
 
-# ACWR safe range
+MIN_CADENCE = 0
+MAX_CADENCE = 200
+
+# -----------------------------
+# Geometry & sport specifics
+# -----------------------------
+DEFAULT_LAP_DISTANCE = 400.0  # meters (speed skating rink)
+
+# -----------------------------
+# Smoothing / signal processing
+# -----------------------------
+DEFAULT_SMOOTHING_WINDOW = 5
+
+# -----------------------------
+# Training load / fatigue
+# -----------------------------
 ACWR_SAFE_MIN = 0.8
 ACWR_SAFE_MAX = 1.3
 
-# Numerical stability
-EPSILON = 1e-6
+# -----------------------------
+# Scoring defaults
+# -----------------------------
+DEFAULT_READINESS_NEUTRAL = 0.5

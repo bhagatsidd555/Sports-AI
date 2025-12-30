@@ -1,85 +1,63 @@
-import os
-from typing import Dict, Any, Optional
-from dotenv import load_dotenv
-from openai import OpenAI
+from typing import Dict
+from .prompts import SYSTEM_PROMPT, INSIGHT_PROMPT
 
-from app.ai_layer.prompts import (
-    SYSTEM_ROLE,
-    ATHLETE_SUMMARY_PROMPT,
-    COACH_INSIGHT_PROMPT,
-    QUESTION_ANSWER_PROMPT
-)
 
-load_dotenv()
-
-class AIGenerator:
+def generate_insight(metrics: Dict) -> str:
     """
-    Central AI interaction layer.
-    Handles all LLM-based insight generation.
+    Convert computed KPI metrics into coach-friendly insight text.
+    This function is LLM-ready (OpenAI / local LLM / future models).
     """
 
-    def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
+    # Defensive defaults
+    def val(key, default="N/A"):
+        return metrics.get(key, default)
 
-        self.client = OpenAI(api_key=api_key)
-        self.model = "gpt-4.1-mini"  # stable, cost-efficient
+    prompt = INSIGHT_PROMPT.format(
+        avg_speed=val("avg_speed"),
+        max_speed=val("max_speed"),
+        lap_consistency=val("lap_consistency"),
+        avg_hr=val("avg_hr"),
+        hr_drift=val("hr_drift"),
+        efficiency=val("efficiency"),
+        training_load=val("training_load"),
+        acwr=val("acwr"),
+        endurance_index=val("endurance_index"),
+        trajectory_smoothness=val("trajectory_smoothness"),
+        corner_speed_loss=val("corner_speed_loss"),
+        readiness_score=val("readiness_score"),
+    )
 
-    def _call_llm(self, user_prompt: str) -> str:
-        """
-        Internal helper to call OpenAI Chat Completion
-        """
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": SYSTEM_ROLE},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.3,
-            max_tokens=600,
-        )
+    # 🔹 For now: rule-based explanation (Lean V1)
+    # 🔹 Future: plug into GPT / LLM
 
-        return response.choices[0].message.content.strip()
+    readiness = val("readiness_score", 0)
 
-    def generate_athlete_summary(
-        self,
-        session_data: Dict[str, Any],
-        kpis: Dict[str, Any]
-    ) -> str:
-        """
-        Generate athlete performance summary
-        """
-        prompt = ATHLETE_SUMMARY_PROMPT.format(
-            data=session_data,
-            metrics=kpis
-        )
-        return self._call_llm(prompt)
+    if readiness >= 80:
+        status = "Athlete is in peak competitive condition."
+    elif readiness >= 60:
+        status = "Athlete shows solid readiness but minor fatigue signs."
+    elif readiness >= 40:
+        status = "Moderate fatigue detected. Training load should be monitored."
+    else:
+        status = "Low readiness. Recovery and load reduction are recommended."
 
-    def generate_coach_insights(
-        self,
-        kpis: Dict[str, Any],
-        trends: Optional[Dict[str, Any]] = None
-    ) -> str:
-        """
-        Generate coach-focused insights using trends
-        """
-        prompt = COACH_INSIGHT_PROMPT.format(
-            metrics=kpis,
-            trends=trends or "No historical trend data available"
-        )
-        return self._call_llm(prompt)
+    insight = f"""
+PERFORMANCE INSIGHT REPORT
+--------------------------
+{status}
 
-    def answer_question(
-        self,
-        question: str,
-        kpis: Dict[str, Any]
-    ) -> str:
-        """
-        Answer ad-hoc questions from coach/athlete
-        """
-        prompt = QUESTION_ANSWER_PROMPT.format(
-            question=question,
-            metrics=kpis
-        )
-        return self._call_llm(prompt)
+Key Observations:
+- Speed and heart rate relationship indicates efficiency level: {val("efficiency")}
+- Heart rate drift suggests cardiovascular fatigue trend.
+- Lap consistency reflects pacing discipline.
+
+Coaching Actions:
+- Adjust intensity based on readiness score.
+- Focus on technical efficiency if corner speed loss is elevated.
+- Monitor ACWR to avoid overload.
+
+Race Outlook:
+- Readiness Score: {readiness}/100
+"""
+
+    return insight.strip()

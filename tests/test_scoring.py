@@ -1,31 +1,30 @@
-from scoring.readiness_score import compute_race_readiness_score
+import pandas as pd
+from app.kpi_engine.aggregator import aggregate_kpis
 
 
-def sample_kpis():
-    return {
-        "lap_consistency": 0.04,
-        "speed_decay": 0.05,
-        "heart_rate_drift": 0.08,
-        "speed_hr_efficiency": 0.35,
-        "endurance_index": 0.40,
-        "acwr": 1.0,
-        "trajectory_smoothness": 0.04,
-        "corner_speed_loss": 0.03
-    }
+def sample_df():
+    return pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=10, freq="S"),
+        "distance": [i * 100 for i in range(10)],
+        "speed": [6.0, 6.1, 6.2, 6.1, 6.0, 5.9, 5.8, 5.7, 5.6, 5.5],
+        "heart_rate": [140, 142, 145, 147, 150, 152, 155, 158, 160, 162],
+        "lap": [1,1,1,1,2,2,2,2,3,3]
+    })
 
 
-def test_race_readiness_score_range():
-    result = compute_race_readiness_score(sample_kpis())
-    score = result["race_readiness_score"]
+def test_kpi_aggregation():
+    df = sample_df()
+    metrics = aggregate_kpis(df)
 
-    assert 0 <= score <= 100
+    assert "avg_speed" in metrics
+    assert "max_speed" in metrics
+    assert "speed_decay" in metrics
+    assert "avg_hr" in metrics
+    assert "hr_drift" in metrics
+    assert "efficiency" in metrics
+    assert "training_load" in metrics
+    assert "acwr" in metrics
+    assert "endurance_index" in metrics
 
-
-def test_readiness_interpretation_exists():
-    result = compute_race_readiness_score(sample_kpis())
-    assert "interpretation" in result
-
-
-def test_normalized_scores_exist():
-    result = compute_race_readiness_score(sample_kpis())
-    assert "normalized_scores" in result
+    assert metrics["avg_speed"] > 0
+    assert metrics["max_speed"] >= metrics["avg_speed"]

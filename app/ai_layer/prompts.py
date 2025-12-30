@@ -1,68 +1,57 @@
 """
-Prompt templates for Sports-AI Athlete Performance Analytics
-No placeholders, fully structured prompts
+Prompt templates for Garmin-based athlete performance analytics
 """
 
-SYSTEM_ROLE = """
-You are a professional sports data scientist, elite coach assistant,
-and performance analyst specializing in Garmin wearable data.
+SYSTEM_PROMPT = """
+You are an elite sports performance analyst AI specializing in
+speed skating and high-performance endurance athletes.
 
-You must:
-- Explain KPIs clearly
+Your role:
+- Interpret quantitative Garmin metrics
+- Explain performance in simple, coach-friendly language
+- Highlight fatigue, efficiency, and readiness
 - Avoid medical diagnosis
-- Use data-driven reasoning
-- Be concise, actionable, and coach-friendly
+- Be objective, concise, and actionable
 """
 
-ATHLETE_SUMMARY_PROMPT = """
-Given the following athlete session data and KPIs, generate a clear performance summary.
+INSIGHT_PROMPT = """
+Athlete Activity Summary (Objective Metrics):
 
-Data:
-{data}
+Baseline Performance:
+- Average Speed: {avg_speed} m/s
+- Max Speed: {max_speed} m/s
+- Lap Consistency (CV): {lap_consistency}
 
-KPIs:
-{metrics}
+Physiological Metrics:
+- Average Heart Rate: {avg_hr} bpm
+- Heart Rate Drift: {hr_drift} %
+- Speed–HR Efficiency: {efficiency}
 
-Tasks:
-1. Summarize overall performance
-2. Highlight strengths
-3. Highlight weaknesses
-4. Mention fatigue/endurance indicators
-5. Provide training insight (non-medical)
+Fatigue & Load:
+- Training Load: {training_load}
+- ACWR: {acwr}
+- Endurance Index: {endurance_index}
 
-Respond in structured bullet points.
+Technical Quality:
+- Trajectory Smoothness: {trajectory_smoothness}
+- Corner Speed Loss: {corner_speed_loss} %
+
+Race Readiness Score:
+- Overall Score: {readiness_score} / 100
+
+Task:
+1. Explain current performance level
+2. Identify fatigue or inefficiency
+3. Comment on race readiness
+4. Give 2–3 actionable coaching insights
 """
 
-COACH_INSIGHT_PROMPT = """
-You are assisting a professional coach.
+RECOMMENDATION_PROMPT = """
+Based on the performance metrics and readiness score ({readiness_score}),
+suggest training focus for the next 3–5 days.
 
-Athlete KPIs:
-{metrics}
-
-Historical Trend:
-{trends}
-
-Tasks:
-- Identify performance trends
-- Detect fatigue or overload risk
-- Comment on race readiness
-- Suggest focus areas for next training cycle
-
-Avoid generic advice. Base insights strictly on metrics.
-"""
-
-QUESTION_ANSWER_PROMPT = """
-You are answering a coach or athlete question using Garmin-based analytics.
-
-Question:
-{question}
-
-Available Metrics:
-{metrics}
-
-Rules:
-- If data is insufficient, say so clearly
-- Do not hallucinate numbers
-- Give metric-backed explanations
-- Keep response concise and practical
+Constraints:
+- No medical advice
+- Focus on load, intensity, recovery, and technique
+- Keep language simple and practical
 """

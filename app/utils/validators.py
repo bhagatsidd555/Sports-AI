@@ -8,36 +8,39 @@ from .constants import (
 
 
 def validate_dataframe(df: pd.DataFrame) -> None:
-    """Ensure required columns exist"""
-    required_columns = [
-        "timestamp",
-        "distance",
-        "speed",
-        "heart_rate"
-    ]
+    """
+    Validate Garmin activity DataFrame for analytics safety
+    Raises ValueError if data is invalid
+    """
 
-    missing = set(required_columns) - set(df.columns)
-    if missing:
-        raise ValueError(f"Missing required columns: {missing}")
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Input is not a Pandas DataFrame")
 
+    if df.empty:
+        raise ValueError("DataFrame is empty")
 
-def validate_heart_rate(series):
-    """Clamp heart-rate values to physiological limits"""
-    return series.clip(MIN_HEART_RATE, MAX_HEART_RATE)
+    # Timestamp check
+    if "timestamp" in df.columns:
+        if df["timestamp"].isnull().all():
+            raise ValueError("Timestamp column is fully empty")
 
+    # Heart rate sanity
+    if "heart_rate" in df.columns:
+        hr = df["heart_rate"].dropna()
+        if not hr.empty:
+            if hr.min() < MIN_HEART_RATE or hr.max() > MAX_HEART_RATE:
+                raise ValueError("Heart rate values out of physiological range")
 
-def validate_speed(series):
-    """Clamp speed values to realistic bounds"""
-    return series.clip(MIN_SPEED, MAX_SPEED)
+    # Speed sanity
+    if "speed" in df.columns:
+        speed = df["speed"].dropna()
+        if not speed.empty:
+            if speed.min() < MIN_SPEED or speed.max() > MAX_SPEED:
+                raise ValueError("Speed values out of realistic range")
 
+    # Distance monotonicity (optional but recommended)
+    if "distance" in df.columns:
+        if not df["distance"].is_monotonic_increasing:
+            raise ValueError("Distance must be cumulative and increasing")
 
-def validate_monotonic_time(series):
-    """Ensure timestamp is strictly increasing"""
-    if not series.is_monotonic_increasing:
-        raise ValueError("Timestamp sequence is not monotonic")
-
-
-def validate_gps(lat, lon):
-    """Basic GPS sanity check"""
-    if lat.isnull().any() or lon.isnull().any():
-        raise ValueError("GPS data contains null values")
+    return
