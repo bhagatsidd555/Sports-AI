@@ -4,11 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import get_logger
 
-from app.api import (
-    upload_router,
-    chat_router,
-    health_router
-)
+# 🔥 ROUTER IMPORTS (SAFE & GUARANTEED)
+from app.api.upload import router as upload_router
+from app.api.chat import router as chat_router
+from app.api.health import router as health_router
+from app.api import readiness   # module import
 
 logger = get_logger("main")
 
@@ -26,7 +26,7 @@ app = FastAPI(
 # -----------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # later restrict for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,16 +38,17 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(upload_router)
 app.include_router(chat_router)
+app.include_router(readiness.router)  # ✅ CORRECT FIX
 
 # -----------------------------
 # Startup / Shutdown Events
 # -----------------------------
 @app.on_event("startup")
 def on_startup():
-    logger.info("🚀 Sports-AI Backend started successfully")
+    logger.info("Sports-AI Backend started successfully")
     logger.info(f"Environment: {settings.ENV}")
 
 
 @app.on_event("shutdown")
 def on_shutdown():
-    logger.info("🛑 Sports-AI Backend shutting down")
+    logger.info("Sports-AI Backend shutting down")

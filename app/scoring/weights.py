@@ -1,13 +1,8 @@
-"""
-Weights for readiness score computation
-These represent relative importance for race readiness
-"""
+# Weights must sum ~ 1.0
 
 WEIGHTS = {
-    "speed_decay": 0.20,
-    "hr_drift": 0.20,
-    "efficiency": 0.20,
-    "acwr": 0.15,
-    "endurance_index": 0.15,
-    "lap_consistency": 0.10
+    "speed": 0.30,
+    "heart": 0.25,
+    "load": 0.25,
+    "endurance": 0.20
 }

@@ -1,110 +1,96 @@
-from typing import Dict
-from .thresholds import THRESHOLDS
-from .weights import WEIGHTS
+from app.scoring.thresholds import THRESHOLDS
+from app.scoring.weights import WEIGHTS
 
-
-def _score_linear(value, excellent, poor, inverse=False):
+def _score_metric(value, good, moderate, reverse=False):
     """
-    Linear scoring helper.
-    Returns value between 0 and 1.
+    Convert raw KPI into 0–1 score
+    reverse=True for metrics where lower is better
     """
     if value is None:
-        return 0.5  # neutral
+        return 0.5
 
-    if inverse:
-        if value <= excellent:
+    if reverse:
+        if value <= good:
             return 1.0
-        if value >= poor:
-            return 0.0
-        return 1 - (value - excellent) / (poor - excellent)
+        elif value <= moderate:
+            return 0.7
+        else:
+            return 0.3
     else:
-        if value >= excellent:
+        if value >= good:
             return 1.0
-        if value <= poor:
-            return 0.0
-        return (value - poor) / (excellent - poor)
+        elif value >= moderate:
+            return 0.7
+        else:
+            return 0.3
 
 
-def compute_readiness_score(metrics: Dict) -> Dict:
+def compute_race_readiness(kpis: dict) -> dict:
     """
-    Compute overall Race Readiness Score (0–100)
-    Returns score + component breakdown
+    Compute final race readiness score (0–100)
     """
 
-    components = {}
+    # --- Speed score ---
+    speed_score = (
+        _score_metric(
+            kpis["speed"]["lap_consistency"],
+            THRESHOLDS["lap_consistency"]["good"],
+            THRESHOLDS["lap_consistency"]["moderate"]
+        ) +
+        _score_metric(
+            kpis["speed"]["speed_decay"],
+            THRESHOLDS["speed_decay"]["good"],
+            THRESHOLDS["speed_decay"]["moderate"],
+            reverse=True
+        )
+    ) / 2
 
-    # ---------------------------
-    # Speed Decay (lower is better)
-    # ---------------------------
-    sd = metrics.get("speed_decay")
-    components["speed_decay"] = _score_linear(
-        sd,
-        THRESHOLDS["speed_decay"]["excellent"],
-        THRESHOLDS["speed_decay"]["poor"],
-        inverse=True
+    # --- Heart score ---
+    heart_score = _score_metric(
+        kpis["heart_rate"]["hr_drift"],
+        THRESHOLDS["hr_drift"]["good"],
+        THRESHOLDS["hr_drift"]["moderate"],
+        reverse=True
     )
 
-    # ---------------------------
-    # HR Drift (lower is better)
-    # ---------------------------
-    hr_drift = metrics.get("hr_drift")
-    components["hr_drift"] = _score_linear(
-        hr_drift,
-        THRESHOLDS["hr_drift"]["excellent"],
-        THRESHOLDS["hr_drift"]["poor"],
-        inverse=True
+    # --- Load score ---
+    load_score = _score_metric(
+        kpis["load"]["acwr"],
+        THRESHOLDS["acwr"]["good"],
+        THRESHOLDS["acwr"]["moderate"],
+        reverse=True
     )
 
-    # ---------------------------
-    # Speed–HR Efficiency (higher is better)
-    # ---------------------------
-    eff = metrics.get("efficiency")
-    components["efficiency"] = _score_linear(
-        eff,
-        THRESHOLDS["efficiency"]["excellent"],
-        THRESHOLDS["efficiency"]["poor"]
+    # --- Endurance score ---
+    endurance_score = _score_metric(
+        kpis["endurance"]["endurance_index"],
+        THRESHOLDS["endurance_index"]["good"],
+        THRESHOLDS["endurance_index"]["moderate"]
     )
 
-    # ---------------------------
-    # ACWR (penalty outside safe zone)
-    # ---------------------------
-    acwr = metrics.get("acwr")
-    if acwr is None:
-        components["acwr"] = 0.5
-    elif THRESHOLDS["acwr"]["low_risk_min"] <= acwr <= THRESHOLDS["acwr"]["low_risk_max"]:
-        components["acwr"] = 1.0
+    # --- Final weighted score ---
+    readiness = (
+        speed_score * WEIGHTS["speed"] +
+        heart_score * WEIGHTS["heart"] +
+        load_score * WEIGHTS["load"] +
+        endurance_score * WEIGHTS["endurance"]
+    ) * 100
+
+    # --- Coach-friendly label ---
+    if readiness >= 80:
+        status = "High – Race Ready"
+    elif readiness >= 60:
+        status = "Moderate – Minor adjustments advised"
     else:
-        components["acwr"] = 0.3
-
-    # ---------------------------
-    # Endurance Index
-    # ---------------------------
-    ei = metrics.get("endurance_index")
-    components["endurance_index"] = _score_linear(
-        ei,
-        THRESHOLDS["endurance_index"]["excellent"],
-        THRESHOLDS["endurance_index"]["poor"]
-    )
-
-    # ---------------------------
-    # Lap Consistency (lower CV is better)
-    # ---------------------------
-    lap_cv = metrics.get("lap_consistency")
-    if lap_cv is None:
-        components["lap_consistency"] = 0.5
-    else:
-        components["lap_consistency"] = max(0.0, 1 - lap_cv)
-
-    # ---------------------------
-    # Weighted aggregation
-    # ---------------------------
-    readiness_score = 0.0
-    for key, weight in WEIGHTS.items():
-        readiness_score += components.get(key, 0) * weight
-
-    readiness_score = round(readiness_score * 100, 1)
+        status = "Low – Recovery recommended"
 
     return {
-        "readiness_score": readiness_score,
-        "components": components
+        "race_readiness_score": round(readiness, 1),
+        "readiness_status": status,
+        "component_scores": {
+            "speed": round(speed_score * 100, 1),
+            "heart": round(heart_score * 100, 1),
+            "load": round(load_score * 100, 1),
+            "endurance": round(endurance_score * 100, 1),
+        }
     }

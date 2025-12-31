@@ -11,5 +11,5 @@ def health_check():
     return {
         "status": "ok",
         "service": "Sports-AI Backend",
-        "message": "Application is running successfully"
+        "message": "Application is running ok"
     }

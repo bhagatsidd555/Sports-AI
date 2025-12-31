@@ -1,40 +1,24 @@
-"""
-Threshold values for performance & fatigue metrics
-All values are Lean V1 safe defaults (can be tuned per athlete later)
-"""
+# Thresholds are Lean V1 – simple, interpretable
 
 THRESHOLDS = {
-    # Speed decay (fraction)
+    "lap_consistency": {
+        "good": 0.90,
+        "moderate": 0.80
+    },
     "speed_decay": {
-        "excellent": 0.05,
-        "acceptable": 0.10,
-        "poor": 0.20
+        "good": 0.5,     # m/s
+        "moderate": 1.5
     },
-
-    # Heart rate drift (%)
     "hr_drift": {
-        "excellent": 5,
-        "acceptable": 10,
-        "poor": 20
+        "good": 5.0,     # bpm
+        "moderate": 10.0
     },
-
-    # Speed–HR efficiency (higher is better)
-    "efficiency": {
-        "excellent": 0.035,
-        "acceptable": 0.025,
-        "poor": 0.015
-    },
-
-    # ACWR (load balance)
     "acwr": {
-        "low_risk_min": 0.8,
-        "low_risk_max": 1.3
+        "good": 1.2,
+        "moderate": 1.5
     },
-
-    # Endurance index
     "endurance_index": {
-        "excellent": 0.035,
-        "acceptable": 0.025,
-        "poor": 0.015
+        "good": 0.85,
+        "moderate": 0.75
     }
 }

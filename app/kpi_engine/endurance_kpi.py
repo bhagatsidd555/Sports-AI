@@ -1,27 +1,23 @@
 import pandas as pd
-import numpy as np
-
 
 def compute_endurance_kpis(df: pd.DataFrame) -> dict:
     """
-    Endurance KPIs:
-    - Endurance index
+    Endurance & efficiency KPIs
     """
 
-    metrics = {}
+    result = {}
 
-    if "speed" not in df.columns or "heart_rate" not in df.columns:
-        return metrics
+    speed_col = "speed_smooth" if "speed_smooth" in df.columns else "speed"
+    hr_col = "heart_rate_smooth" if "heart_rate_smooth" in df.columns else "heart_rate"
 
-    speed = df["speed"].dropna()
-    hr = df["heart_rate"].dropna()
+    # Endurance Index (speed stability)
+    result["endurance_index"] = float(
+        1 - (df[speed_col].std() / df[speed_col].mean())
+    )
 
-    # Endurance Index = speed retention per HR unit
-    if len(speed) > 10:
-        metrics["endurance_index"] = round(
-            speed.mean() / hr.mean(), 4
-        )
-    else:
-        metrics["endurance_index"] = None
+    # Efficiency ratio
+    result["efficiency_ratio"] = float(
+        df[speed_col].mean() / df[hr_col].mean()
+    )
 
-    return metrics
+    return result

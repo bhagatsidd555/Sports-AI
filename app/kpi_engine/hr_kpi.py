@@ -1,36 +1,27 @@
 import pandas as pd
-import numpy as np
-
 
 def compute_hr_kpis(df: pd.DataFrame) -> dict:
     """
-    Heart-rate-based KPIs:
-    - Average HR
-    - HR drift
-    - Speed–HR efficiency
+    Heart rate & physiological KPIs
     """
 
-    metrics = {}
+    result = {}
 
-    if "heart_rate" not in df.columns:
-        return metrics
+    hr_col = "heart_rate_smooth" if "heart_rate_smooth" in df.columns else "heart_rate"
+    speed_col = "speed_smooth" if "speed_smooth" in df.columns else "speed"
 
-    hr = df["heart_rate"].dropna()
-    metrics["avg_hr"] = round(hr.mean(), 1)
+    result["avg_hr"] = float(df[hr_col].mean())
+    result["max_hr"] = float(df[hr_col].max())
 
-    # HR Drift: HR increase over time at similar speed
-    n = len(hr)
-    if n > 10:
-        first = hr.iloc[: int(0.25 * n)].mean()
-        last = hr.iloc[int(0.75 * n):].mean()
-        metrics["hr_drift"] = round((last - first) / first * 100, 2)
-    else:
-        metrics["hr_drift"] = None
+    # Heart Rate Drift (second half vs first half)
+    mid = len(df) // 2
+    hr_first = df.iloc[:mid][hr_col].mean()
+    hr_second = df.iloc[mid:][hr_col].mean()
+    result["hr_drift"] = float(hr_second - hr_first)
 
-    # Speed–HR Efficiency
-    if "speed" in df.columns:
-        metrics["efficiency"] = round(
-            df["speed"].mean() / hr.mean(), 4
-        )
+    # Speed–HR efficiency
+    result["speed_hr_efficiency"] = float(
+        df[speed_col].mean() / df[hr_col].mean()
+    )
 
-    return metrics
+    return result

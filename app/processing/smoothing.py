@@ -1,22 +1,28 @@
 import pandas as pd
 
-
-def smooth_signals(df: pd.DataFrame, window: int = 5) -> pd.DataFrame:
+def smooth_signals(
+    df: pd.DataFrame,
+    window: int = 5
+) -> pd.DataFrame:
     """
-    Apply rolling smoothing to noisy signals
-    Used for speed, heart rate, cadence
+    Apply rolling average smoothing
+    for heart rate and speed signals.
     """
 
     df = df.copy()
 
-    smooth_cols = ["speed", "heart_rate", "cadence"]
+    if "heart_rate" in df.columns:
+        df["heart_rate_smooth"] = (
+            df["heart_rate"]
+            .rolling(window=window, min_periods=1)
+            .mean()
+        )
 
-    for col in smooth_cols:
-        if col in df.columns:
-            df[col] = (
-                df[col]
-                .rolling(window=window, min_periods=1, center=True)
-                .mean()
-            )
+    if "speed" in df.columns:
+        df["speed_smooth"] = (
+            df["speed"]
+            .rolling(window=window, min_periods=1)
+            .mean()
+        )
 
     return df

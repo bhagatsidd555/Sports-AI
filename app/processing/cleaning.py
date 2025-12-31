@@ -1,38 +1,58 @@
 import pandas as pd
 import numpy as np
 
+# Physiological & sport-safe limits
+MIN_HR = 30
+MAX_HR = 220
+
+MIN_SPEED = 0.0
+MAX_SPEED = 20.0  # m/s (upper bound for speed skating)
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Clean raw Garmin data:
+    - sort by timestamp
+    - handle missing values
+    - remove physiological outliers
+    """
+
     df = df.copy()
 
-    # 🔑 FORCE numeric conversion for safety
-    numeric_cols = [
-        "distance", "speed", "heart_rate",
-        "cadence", "elevation", "temperature",
-        "latitude", "longitude"
-    ]
-
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Timestamp
+    # Sort by time
     if "timestamp" in df.columns:
-        df = df.dropna(subset=["timestamp"])
-        df = df.drop_duplicates(subset=["timestamp"])
+        df = df.sort_values("timestamp")
 
-    # Distance
-    if "distance" in df.columns:
-        df["distance"] = df["distance"].fillna(method="ffill").fillna(0)
-
-    # Speed
-    if "speed" in df.columns:
-        df.loc[(df["speed"] < 0) | (df["speed"] > 15), "speed"] = np.nan
-        df["speed"] = df["speed"].interpolate()
-
-    # Heart rate
+    # Heart Rate cleaning
     if "heart_rate" in df.columns:
-        df.loc[(df["heart_rate"] < 30) | (df["heart_rate"] > 230), "heart_rate"] = np.nan
-        df["heart_rate"] = df["heart_rate"].interpolate()
+        df.loc[
+            (df["heart_rate"] < MIN_HR) | (df["heart_rate"] > MAX_HR),
+            "heart_rate"
+        ] = np.nan
 
-    return df.reset_index(drop=True)
+        df["heart_rate"] = (
+            df["heart_rate"]
+            .interpolate(method="linear")
+            .bfill()
+            .ffill()
+        )
+
+    # Speed cleaning
+    if "speed" in df.columns:
+        df.loc[
+            (df["speed"] < MIN_SPEED) | (df["speed"] > MAX_SPEED),
+            "speed"
+        ] = np.nan
+
+        df["speed"] = (
+            df["speed"]
+            .interpolate(method="linear")
+            .bfill()
+            .ffill()
+        )
+
+    # Distance cleanup
+    if "distance" in df.columns:
+        df["distance"] = df["distance"].bfill().ffill()
+
+    df.reset_index(drop=True, inplace=True)
+    return df

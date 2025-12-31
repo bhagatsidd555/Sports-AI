@@ -1,42 +1,33 @@
 import pandas as pd
 import numpy as np
 
-
 def compute_speed_kpis(df: pd.DataFrame) -> dict:
     """
-    Speed-based KPIs:
-    - Average speed
-    - Max speed
-    - Speed decay
-    - Lap consistency (CV)
+    Speed performance KPIs
     """
 
-    metrics = {}
+    result = {}
 
-    if "speed" not in df.columns:
-        return metrics
+    speed_col = "speed_smooth" if "speed_smooth" in df.columns else "speed"
 
-    speed = df["speed"].dropna()
+    # Average speed
+    result["avg_speed"] = float(df[speed_col].mean())
 
-    metrics["avg_speed"] = round(speed.mean(), 3)
-    metrics["max_speed"] = round(speed.max(), 3)
-
-    # Speed decay: first 25% vs last 25%
-    n = len(speed)
-    if n > 10:
-        first = speed.iloc[: int(0.25 * n)].mean()
-        last = speed.iloc[int(0.75 * n):].mean()
-        metrics["speed_decay"] = round((first - last) / first, 3)
-    else:
-        metrics["speed_decay"] = None
-
-    # Lap consistency (Coefficient of Variation)
-    if "lap" in df.columns:
-        lap_speed = df.groupby("lap")["speed"].mean()
-        metrics["lap_consistency"] = round(
-            lap_speed.std() / lap_speed.mean(), 3
+    # Lap consistency (lower CV = better consistency)
+    if "lap_number" in df.columns:
+        lap_avg = df.groupby("lap_number")[speed_col].mean()
+        result["lap_consistency"] = float(
+            1 - (lap_avg.std() / lap_avg.mean())
         )
     else:
-        metrics["lap_consistency"] = None
+        result["lap_consistency"] = None
 
-    return metrics
+    # Speed decay (first lap vs last lap)
+    if "lap_number" in df.columns:
+        first_lap = df[df["lap_number"] == df["lap_number"].min()][speed_col].mean()
+        last_lap = df[df["lap_number"] == df["lap_number"].max()][speed_col].mean()
+        result["speed_decay"] = float(first_lap - last_lap)
+    else:
+        result["speed_decay"] = None
+
+    return result

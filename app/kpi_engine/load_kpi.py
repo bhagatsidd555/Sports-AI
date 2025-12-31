@@ -1,31 +1,21 @@
 import pandas as pd
-import numpy as np
-
 
 def compute_load_kpis(df: pd.DataFrame) -> dict:
     """
-    Load-based KPIs:
-    - Training load
-    - ACWR (simplified Lean V1)
+    Training load & fatigue KPIs
     """
 
-    metrics = {}
+    result = {}
 
-    if "heart_rate" not in df.columns:
-        return metrics
+    hr_col = "heart_rate_smooth" if "heart_rate_smooth" in df.columns else "heart_rate"
 
-    hr = df["heart_rate"].dropna()
+    # Simple training load proxy
+    result["session_load"] = float(df[hr_col].sum())
 
-    # Simple TRIMP-style load
-    metrics["training_load"] = round(hr.mean() * len(hr) / 1000, 2)
+    # ACWR (simplified Lean V1)
+    acute = df[hr_col].tail(len(df)//4).mean()
+    chronic = df[hr_col].mean()
 
-    # ACWR (Lean V1 proxy)
-    acute = hr.iloc[-int(0.3 * len(hr)):].mean()
-    chronic = hr.mean()
+    result["acwr"] = float(acute / chronic) if chronic != 0 else None
 
-    if chronic > 0:
-        metrics["acwr"] = round(acute / chronic, 2)
-    else:
-        metrics["acwr"] = None
-
-    return metrics
+    return result
