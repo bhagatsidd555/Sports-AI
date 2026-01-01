@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sports-AI Performance Dashboard</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      max-width: 500px;
+      margin: 20px auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    ul li {
+      padding: 6px 0;
+    }
+
+    .status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🏃 Sports-AI Athlete Performance Dashboard</h1>
+
+  <!-- Upload Section -->
+  <div class="card">
+    <h2>Upload Activity CSV</h2>
+
+    <input type="file" id="fileInput" accept=".csv" />
+    <br /><br />
+
+    <button onclick="uploadCSV()">Upload</button>
+
+    <p id="uploadStatus" class="status"></p>
+  </div>
+
+  <!-- Readiness Section -->
+  <div class="card hidden" id="readinessCard">
+    <h2>Race Readiness</h2>
+
+    <h1 id="score"></h1>
+    <p id="readinessStatus" class="status"></p>
+
+    <h3>Component Scores</h3>
+    <ul>
+      <li>Speed: <span id="speed"></span></li>
+      <li>Heart: <span id="heart"></span></li>
+      <li>Load: <span id="load"></span></li>
+      <li>Endurance: <span id="endurance"></span></li>
+    </ul>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+
+    async function uploadCSV() {
+      const fileInput = document.getElementById("fileInput");
+      const statusText = document.getElementById("uploadStatus");
+
+      if (!fileInput.files.length) {
+        alert("Please select a CSV file");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      statusText.innerText = "Uploading...";
+
+      try {
+        const response = await fetch(API_BASE + "/upload/", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Upload failed");
+        }
+
+        statusText.innerText = "Upload successful ✅";
+
+        // After upload → fetch readiness
+        fetchReadiness();
+
+      } catch (error) {
+        statusText.innerText = "Error: " + error.message;
+      }
+    }
+
+    async function fetchReadiness() {
+      try {
+        const response = await fetch(API_BASE + "/readiness/");
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Failed to fetch readiness");
+        }
+
+        const r = data.readiness;
+
+        document.getElementById("score").innerText =
+          r.race_readiness_score;
+
+        document.getElementById("readinessStatus").innerText =
+          r.readiness_status;
+
+        document.getElementById("speed").innerText =
+          r.component_scores.speed;
+
+        document.getElementById("heart").innerText =
+          r.component_scores.heart;
+
+        document.getElementById("load").innerText =
+          r.component_scores.load;
+
+        document.getElementById("endurance").innerText =
+          r.component_scores.endurance;
+
+        document.getElementById("readinessCard")
+          .classList.remove("hidden");
+
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -8,9 +8,19 @@ MAX_HR = 220
 MIN_SPEED = 0.0
 MAX_SPEED = 20.0  # m/s (upper bound for speed skating)
 
+NUMERIC_COLUMNS = [
+    "distance",
+    "speed",
+    "heart_rate",
+    "cadence",
+    "elevation",
+    "temperature",
+]
+
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Clean raw Garmin data:
+    - enforce correct data types
     - sort by timestamp
     - handle missing values
     - remove physiological outliers
@@ -18,11 +28,36 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.copy()
 
-    # Sort by time
+    # -----------------------------
+    # 1️⃣ Timestamp handling (CRITICAL)
+    # -----------------------------
     if "timestamp" in df.columns:
-        df = df.sort_values("timestamp")
+        df["timestamp"] = pd.to_datetime(
+            df["timestamp"],
+            errors="coerce"
+        )
 
-    # Heart Rate cleaning
+    # Drop rows without valid timestamp
+    df = df.dropna(subset=["timestamp"])
+
+    # -----------------------------
+    # 2️⃣ Convert numeric columns safely (🔥 FIX)
+    # -----------------------------
+    for col in NUMERIC_COLUMNS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            )
+
+    # -----------------------------
+    # 3️⃣ Sort by time
+    # -----------------------------
+    df = df.sort_values("timestamp").reset_index(drop=True)
+
+    # -----------------------------
+    # 4️⃣ Heart Rate cleaning
+    # -----------------------------
     if "heart_rate" in df.columns:
         df.loc[
             (df["heart_rate"] < MIN_HR) | (df["heart_rate"] > MAX_HR),
@@ -36,7 +71,9 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
             .ffill()
         )
 
-    # Speed cleaning
+    # -----------------------------
+    # 5️⃣ Speed cleaning
+    # -----------------------------
     if "speed" in df.columns:
         df.loc[
             (df["speed"] < MIN_SPEED) | (df["speed"] > MAX_SPEED),
@@ -50,9 +87,19 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
             .ffill()
         )
 
-    # Distance cleanup
+    # -----------------------------
+    # 6️⃣ Distance cleanup
+    # -----------------------------
     if "distance" in df.columns:
-        df["distance"] = df["distance"].bfill().ffill()
+        df["distance"] = (
+            df["distance"]
+            .bfill()
+            .ffill()
+        )
 
-    df.reset_index(drop=True, inplace=True)
+    # -----------------------------
+    # 7️⃣ Final safety
+    # -----------------------------
+    df = df.dropna().reset_index(drop=True)
+
     return df
